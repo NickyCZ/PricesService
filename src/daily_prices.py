@@ -12,7 +12,7 @@ logger = Logger()
 app = APIGatewayRestResolver()
 dynamodb = boto3.resource("dynamodb")
 
-@app.post("/daily_prices")
+@app.post("/daily_prices_processing")
 def daily_prices_processing():
     data = app.current_event.json_body
     instrument = data['instrument']

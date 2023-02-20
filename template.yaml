@@ -1,41 +1,46 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  DataService
+Description: PriceService SAM Template
 
-  Sample SAM Template for DataService
-
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
+  Api:
+    TracingEnabled: true
+    BinaryMediaTypes: # see Binary responses section
+      - "*~1*" # converts to */* for any binary type
   Function:
-    Timeout: 900
-    MemorySize: 10240
+    Timeout: 3
+    MemorySize: 512
+    Runtime: python3.9
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+        POWERTOOLS_LOGGER_SAMPLE_RATE: 0.1
+        POWERTOOLS_LOGGER_LOG_EVENT: true
 
 Resources:
-  HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+  RobustVolatilityFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      CodeUri: hello_world/
-      Handler: app.lambda_handler
-      Runtime: python3.9
-      Architectures:
-      - x86_64
+      Layers: # 
+        - !Sub arn:aws:lambda:eu-central-1:017000801446:layer:AWSLambdaPowertoolsPythonV2:17
+        - !Sub arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python39:2
+      Handler: daily_prices.lambda_handler
+      CodeUri: src
+      Description: API handler function
       Events:
-        HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+        AnyApiEvent:
+          Type: Api
           Properties:
-            Path: /hello
-            Method: post
+            Path: /daily_prices
+            Method: POST
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldApi:
-    Description: API Gateway endpoint URL for Prod stage for Hello World function
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: Hello World Lambda Function ARN
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: Implicit IAM Role created for Hello World function
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+  ApiUrl:
+    Description: "URL of the Calculator API"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+
+  RobustVolatilityFunctionArn:
+    Description: "ARN of the DailyPrices Lambda"
+    Value: !GetAtt DailyPricesFunction.Arn
+  RobustVolatilityFunctionIamRole:
+    Description: "IAM Role created for the DailyPrices Lambda"
+    Value: !GetAtt DailyPricesFunctionRole.Arn

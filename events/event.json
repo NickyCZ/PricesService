@@ -1,7 +1,7 @@
 {
   "body": "{\"instrument\": \"CORN\", \"start_time\": \"1642363201\"}",
-  "resource": "/robust_volatility_calculation",
-  "path": "/robust_volatility_calculation",
+  "resource": "/daily_prices_processing",
+  "path": "/daily_prices_processing",
   "httpMethod": "POST",
   "isBase64Encoded": false,
   "pathParameters": {
