@@ -49,9 +49,6 @@ def retrieve_prices_from_dynamodb(instrument: str, start_time: int) -> dict:
         logger.error("Error occurred while retrieving prices from DynamoDB", e)
         raise ValueError("Error occurred while retrieving prices from DynamoDB")
 
-import pandas as pd
-from decimal import Decimal
-
 def aggregate_to_day_based_prices(multiple_prices: dict) -> dict:
     df = pd.DataFrame.from_dict(multiple_prices)
     series = create_price_series(df)
