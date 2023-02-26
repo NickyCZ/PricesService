@@ -46,20 +46,29 @@ def retrieve_multiple_prices_from_dynamodb(instrument: str, start_time: int) -> 
         logger.error("Error occurred while retrieving prices from DynamoDB", e)
         raise ValueError("Error occurred while retrieving prices from DynamoDB")
 
-def aggregate_to_day_based_prices(multiple_prices: dict) -> pd.Series:
+def aggregate_to_day_based_prices(multiple_prices: dict) -> dict:
     df = pd.DataFrame.from_dict(multiple_prices)
-    series = df.set_index('UnixDateTime')
-    series.index = pd.to_datetime(pd.to_numeric(series.index), unit='s')
+    series = df[['UnixDateTime','Price','Instrument']].copy()
+    series['UnixDateTime'] = pd.to_datetime(pd.to_numeric(series['UnixDateTime']), unit='s')
+    series.set_index('UnixDateTime', inplace=True)
+    series.index.name = 'DateTime'
     series['Price'] = pd.to_numeric(series['Price'])
-    daily_summary = series.resample('D').mean()
-    return daily_summary
+    daily_summary = series.resample('D').agg({'Price': 'mean', 'Instrument': 'first'})
+    daily_summary.reset_index(inplace=True)
+    daily_summary['UnixDateTime'] = daily_summary['DateTime'].apply(lambda x: int(x.timestamp()))
     
+    dailyPrices= daily_summary.drop(columns=['DateTime'], axis=1)
+    cleanedData = dailyPrices.dropna()
+    return cleanedData.to_dict('records')
+
 def write_daily_prices(dailyPrices: dict):
     table_name = "daily_prices"
     # initiate batch_items
     batch_items = []
-    for item in dailyPrices:
-        batch_items.append({'PutRequest': {'Item': item}})
+    copied_items = 0
+    for dailyPrice in dailyPrices:
+        dailyPrice['Price'] = Decimal(str(dailyPrice['Price']))
+        batch_items.append({'PutRequest': {'Item': dailyPrice}})
         copied_items += 1
         # write to destination
         dynamodb.batch_write_item(RequestItems={table_name: batch_items})

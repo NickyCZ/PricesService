@@ -8,7 +8,7 @@ Globals:
     BinaryMediaTypes: # see Binary responses section
       - "*~1*" # converts to */* for any binary type
   Function:
-    Timeout: 3
+    Timeout: 60
     MemorySize: 512
     Runtime: python3.9
     Environment:
@@ -18,7 +18,7 @@ Globals:
         POWERTOOLS_LOGGER_LOG_EVENT: true
 
 Resources:
-  RobustVolatilityFunction:
+  DailyPricesFunction:
     Type: AWS::Serverless::Function
     Properties:
       Layers: # 
