@@ -49,20 +49,40 @@ def retrieve_prices_from_dynamodb(instrument: str, start_time: int) -> dict:
         logger.error("Error occurred while retrieving prices from DynamoDB", e)
         raise ValueError("Error occurred while retrieving prices from DynamoDB")
 
+import pandas as pd
+from decimal import Decimal
+
 def aggregate_to_day_based_prices(multiple_prices: dict) -> dict:
     df = pd.DataFrame.from_dict(multiple_prices)
+    series = create_price_series(df)
+    daily_summary = calculate_daily_summary(series)
+    dailyPrices = format_daily_prices(daily_summary)
+    cleanedData = drop_nan_rows(dailyPrices)
+    return cleanedData.to_dict('records')
+    
+def create_price_series(df):
     series = df[['UnixDateTime','Price','Instrument']].copy()
     series['UnixDateTime'] = pd.to_datetime(pd.to_numeric(series['UnixDateTime']), unit='s')
     series.set_index('UnixDateTime', inplace=True)
     series.index.name = 'DateTime'
     series['Price'] = pd.to_numeric(series['Price'])
+    return series
+    
+def calculate_daily_summary(series):
     daily_summary = series.resample('D').agg({'Price': 'mean', 'Instrument': 'first'})
     daily_summary.reset_index(inplace=True)
     daily_summary['UnixDateTime'] = daily_summary['DateTime'].apply(lambda x: int(x.timestamp()))
+    return daily_summary
     
-    dailyPrices= daily_summary.drop(columns=['DateTime'], axis=1)
+def format_daily_prices(daily_summary):
+    dailyPrices = daily_summary.drop(columns=['DateTime'], axis=1)
+    dailyPrices['Price'] = dailyPrices['Price'].apply(lambda x: Decimal(str(x)))
+    return dailyPrices
+    
+def drop_nan_rows(dailyPrices):
     cleanedData = dailyPrices.dropna()
-    return cleanedData.to_dict('records')
+    return cleanedData
+
 
 def write_daily_prices(dailyPrices: dict):
     # initiate batch_items
